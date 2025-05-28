@@ -318,29 +318,33 @@ class QuizView extends HookConsumerWidget {
                           ),
                         ),
                       Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
+                        spacing: 8,
+                        runSpacing: 8,
                         alignment: WrapAlignment.center,
                         children: currentOptions.value
-                            .map((char) => ElevatedButton(
-                                  onPressed: () => handleCharSelection(char),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor:
-                                        Theme.of(context).colorScheme.primary,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 32,
-                                      vertical: 24,
+                            .map((char) => SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.2,
+                                  child: ElevatedButton(
+                                    onPressed: () => handleCharSelection(char),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor:
+                                          Theme.of(context).colorScheme.primary,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    char,
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
+                                    child: Text(
+                                      char,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ))
