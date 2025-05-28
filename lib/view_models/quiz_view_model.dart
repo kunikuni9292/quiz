@@ -33,11 +33,14 @@ class QuizViewModel extends StateNotifier<QuizState> {
 
   void _startTimer() {
     _timer?.cancel();
-    state = state.copyWith(remainingTime: state.timeLimit, isTimeUp: false);
+    state = state.copyWith(
+        remainingTime: state.timeLimit.toDouble(), isTimeUp: false);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
       if (state.remainingTime > 0) {
-        state = state.copyWith(remainingTime: state.remainingTime - 1);
+        state = state.copyWith(
+            remainingTime: (state.remainingTime - 0.01)
+                .clamp(0.0, state.timeLimit.toDouble()));
       } else {
         _handleTimeUp();
       }

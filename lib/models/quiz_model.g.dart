@@ -35,7 +35,7 @@ _$QuizStateImpl _$$QuizStateImplFromJson(Map<String, dynamic> json) =>
       isCorrect: json['isCorrect'] as bool,
       showResult: json['showResult'] as bool,
       timeLimit: (json['timeLimit'] as num).toInt(),
-      remainingTime: (json['remainingTime'] as num).toInt(),
+      remainingTime: (json['remainingTime'] as num).toDouble(),
       isTimeUp: json['isTimeUp'] as bool,
     );
 

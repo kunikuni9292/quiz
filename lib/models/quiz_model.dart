@@ -27,7 +27,7 @@ class QuizState with _$QuizState {
     required bool isCorrect,
     required bool showResult,
     required int timeLimit,
-    required int remainingTime,
+    required double remainingTime,
     required bool isTimeUp,
   }) = _QuizState;
 

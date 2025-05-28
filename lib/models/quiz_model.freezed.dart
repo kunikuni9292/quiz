@@ -221,7 +221,7 @@ mixin _$QuizState {
   bool get isCorrect => throw _privateConstructorUsedError;
   bool get showResult => throw _privateConstructorUsedError;
   int get timeLimit => throw _privateConstructorUsedError;
-  int get remainingTime => throw _privateConstructorUsedError;
+  double get remainingTime => throw _privateConstructorUsedError;
   bool get isTimeUp => throw _privateConstructorUsedError;
 
   /// Serializes this QuizState to a JSON map.
@@ -249,7 +249,7 @@ abstract class $QuizStateCopyWith<$Res> {
       bool isCorrect,
       bool showResult,
       int timeLimit,
-      int remainingTime,
+      double remainingTime,
       bool isTimeUp});
 }
 
@@ -320,7 +320,7 @@ class _$QuizStateCopyWithImpl<$Res, $Val extends QuizState>
       remainingTime: null == remainingTime
           ? _value.remainingTime
           : remainingTime // ignore: cast_nullable_to_non_nullable
-              as int,
+              as double,
       isTimeUp: null == isTimeUp
           ? _value.isTimeUp
           : isTimeUp // ignore: cast_nullable_to_non_nullable
@@ -347,7 +347,7 @@ abstract class _$$QuizStateImplCopyWith<$Res>
       bool isCorrect,
       bool showResult,
       int timeLimit,
-      int remainingTime,
+      double remainingTime,
       bool isTimeUp});
 }
 
@@ -416,7 +416,7 @@ class __$$QuizStateImplCopyWithImpl<$Res>
       remainingTime: null == remainingTime
           ? _value.remainingTime
           : remainingTime // ignore: cast_nullable_to_non_nullable
-              as int,
+              as double,
       isTimeUp: null == isTimeUp
           ? _value.isTimeUp
           : isTimeUp // ignore: cast_nullable_to_non_nullable
@@ -477,7 +477,7 @@ class _$QuizStateImpl implements _QuizState {
   @override
   final int timeLimit;
   @override
-  final int remainingTime;
+  final double remainingTime;
   @override
   final bool isTimeUp;
 
@@ -557,7 +557,7 @@ abstract class _QuizState implements QuizState {
       required final bool isCorrect,
       required final bool showResult,
       required final int timeLimit,
-      required final int remainingTime,
+      required final double remainingTime,
       required final bool isTimeUp}) = _$QuizStateImpl;
 
   factory _QuizState.fromJson(Map<String, dynamic> json) =
@@ -582,7 +582,7 @@ abstract class _QuizState implements QuizState {
   @override
   int get timeLimit;
   @override
-  int get remainingTime;
+  double get remainingTime;
   @override
   bool get isTimeUp;
 

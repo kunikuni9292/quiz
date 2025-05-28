@@ -15,6 +15,66 @@ class QuizView extends HookConsumerWidget {
     final displayedText = useState('');
     final isAnimationStopped = useState(false);
     final showOptions = useState(false);
+    final currentCharIndex = useState(0);
+    final userAnswer = useState<String>('');
+    final currentOptions = useState<List<String>>([]);
+    final optionTimer = useState<Timer?>(null);
+    final optionRemainingTime = useState(3);
+    final isOptionTimeUp = useState(false);
+    final isAnimationComplete = useState(false);
+
+    // 選択肢の文字を生成する関数
+    List<String> generateOptionChars(String answer, int charIndex) {
+      if (charIndex >= answer.length) return [];
+
+      // 正解の文字
+      final correctChar = answer[charIndex];
+      final Set<String> usedChars = {correctChar};
+
+      // ランダムな文字を生成（正解の文字以外）
+      final randomChars = List.generate(3, (_) {
+        String randomChar;
+        do {
+          // ひらがな、カタカナの範囲からランダムに選択
+          final isHiragana = DateTime.now().millisecondsSinceEpoch % 2 == 0;
+          int charCode;
+          if (isHiragana) {
+            // ひらがな
+            charCode = 0x3040 +
+                (DateTime.now().millisecondsSinceEpoch % (0x309F - 0x3040));
+          } else {
+            // カタカナ
+            charCode = 0x30A0 +
+                (DateTime.now().millisecondsSinceEpoch % (0x30FF - 0x30A0));
+          }
+          randomChar = String.fromCharCode(charCode);
+        } while (usedChars.contains(randomChar));
+        usedChars.add(randomChar);
+        return randomChar;
+      });
+
+      // 正解の文字とランダムな文字を混ぜる
+      final allChars = [...randomChars, correctChar];
+      allChars.shuffle();
+      return allChars;
+    }
+
+    // タイマーを開始する関数
+    void startOptionTimer() {
+      optionRemainingTime.value = 3;
+      isOptionTimeUp.value = false;
+      optionTimer.value?.cancel();
+      optionTimer.value = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (optionRemainingTime.value > 0) {
+          optionRemainingTime.value--;
+        } else {
+          timer.cancel();
+          isOptionTimeUp.value = true;
+          // 制限時間切れで不正解
+          viewModel.answerQuestion('不正解');
+        }
+      });
+    }
 
     useEffect(() {
       // 問題文と表示文字をリセット
@@ -22,6 +82,13 @@ class QuizView extends HookConsumerWidget {
       displayedText.value = '';
       isAnimationStopped.value = false;
       showOptions.value = false;
+      currentCharIndex.value = 0;
+      userAnswer.value = '';
+      currentOptions.value = [];
+      optionTimer.value?.cancel();
+      optionRemainingTime.value = 3;
+      isOptionTimeUp.value = false;
+      isAnimationComplete.value = false;
 
       // ローカルの文字インデックス
       var charIndex = 0;
@@ -34,13 +101,55 @@ class QuizView extends HookConsumerWidget {
             displayedText.value += questionText[charIndex++];
           } else {
             t.cancel();
+            // 問題文のアニメーションが完了したことを記録
+            isAnimationComplete.value = true;
+            // 問題文のアニメーション終了後にタイマーを開始
+            if (!isAnimationStopped.value) {
+              viewModel.startTimer();
+            }
           }
         },
       );
 
-      // クリーンアップはこのタイマーだけをキャンセル
-      return timer.cancel;
+      // クリーンアップ
+      return () {
+        timer.cancel();
+        optionTimer.value?.cancel();
+      };
     }, [quizState.currentQuestionIndex]);
+
+    // 文字選択時の処理
+    void handleCharSelection(String selectedChar) {
+      final correctAnswer = currentQuestion.correctAnswer;
+      if (selectedChar == correctAnswer[currentCharIndex.value]) {
+        userAnswer.value += selectedChar;
+        if (userAnswer.value.length == correctAnswer.length) {
+          // 完全な回答が完成した場合
+          optionTimer.value?.cancel();
+          viewModel.answerQuestion(userAnswer.value);
+        } else {
+          // 次の文字の選択肢を表示
+          currentCharIndex.value++;
+          currentOptions.value =
+              generateOptionChars(correctAnswer, currentCharIndex.value);
+          startOptionTimer();
+        }
+      } else {
+        // 不正解の場合
+        optionTimer.value?.cancel();
+        viewModel.answerQuestion('不正解');
+      }
+    }
+
+    // ストップボタン押下時の処理
+    void handleStopButton() {
+      isAnimationStopped.value = true;
+      showOptions.value = true;
+      currentOptions.value =
+          generateOptionChars(currentQuestion.correctAnswer, 0);
+      viewModel.stopTimer();
+      startOptionTimer();
+    }
 
     // 結果画面への遷移をuseEffectで制御
     useEffect(() {
@@ -89,51 +198,48 @@ class QuizView extends HookConsumerWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 100,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: LinearProgressIndicator(
-                                  value: quizState.remainingTime /
-                                      quizState.timeLimit,
-                                  backgroundColor: Colors.white.withAlpha(30),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    quizState.remainingTime > 6
-                                        ? Colors.green
-                                        : quizState.remainingTime > 3
-                                            ? Colors.orange
-                                            : Colors.red,
-                                  ),
-                                  minHeight: 20,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: quizState.remainingTime /
+                                    quizState.timeLimit,
+                                backgroundColor: Colors.white.withAlpha(30),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  quizState.remainingTime > 6
+                                      ? Colors.green
+                                      : quizState.remainingTime > 3
+                                          ? Colors.orange
+                                          : Colors.red,
                                 ),
+                                minHeight: 20,
                               ),
-                              Text(
-                                '${quizState.remainingTime}秒',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            Text(
+                              '${quizState.remainingTime.toStringAsFixed(2)}秒',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Text(
-                          'スコア: ${quizState.score}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                      ),
+                    ),
+                    Text(
+                      'スコア: ${quizState.score}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -156,10 +262,7 @@ class QuizView extends HookConsumerWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 16.0),
                         child: ElevatedButton(
-                          onPressed: () {
-                            isAnimationStopped.value = true;
-                            showOptions.value = true;
-                          },
+                          onPressed: handleStopButton,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor:
@@ -173,7 +276,7 @@ class QuizView extends HookConsumerWidget {
                             ),
                           ),
                           child: const Text(
-                            'ストップ！',
+                            '解答！',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -187,51 +290,63 @@ class QuizView extends HookConsumerWidget {
               const SizedBox(height: 20),
               if (showOptions.value)
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: currentQuestion.options.length,
-                    itemBuilder: (context, index) {
-                      final option = currentQuestion.options[index];
-                      final isSelected = quizState.isAnswered &&
-                          option == currentQuestion.correctAnswer;
-                      final isWrong = quizState.isAnswered &&
-                          option != currentQuestion.correctAnswer;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: ElevatedButton(
-                          onPressed: quizState.isAnswered
-                              ? null
-                              : () => viewModel.answerQuestion(option),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected
-                                ? Colors.green
-                                : isWrong
-                                    ? Colors.red
-                                    : Colors.white,
-                            foregroundColor: isSelected || isWrong
-                                ? Colors.white
-                                : Theme.of(context).colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (userAnswer.value.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 32.0),
                           child: Text(
-                            option,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: isSelected || isWrong
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                            userAnswer.value,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      );
-                    },
+                      if (!isOptionTimeUp.value)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Text(
+                            '残り時間: ${optionRemainingTime.value}秒',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        alignment: WrapAlignment.center,
+                        children: currentOptions.value
+                            .map((char) => ElevatedButton(
+                                  onPressed: () => handleCharSelection(char),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 32,
+                                      vertical: 24,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    char,
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ],
                   ),
                 ),
               if (quizState.isAnswered)

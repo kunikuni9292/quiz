@@ -21,26 +21,37 @@ class QuizViewModel extends StateNotifier<QuizState> {
             isCorrect: false,
             showResult: false,
             timeLimit: 10,
-            remainingTime: 10,
+            remainingTime: 10.0,
             isTimeUp: false,
             categories: QuizData.categories,
             selectedCategoryId: '',
           ),
-        ) {
-    _startTimer();
-  }
+        );
 
   void _startTimer() {
     _timer?.cancel();
-    state = state.copyWith(remainingTime: state.timeLimit, isTimeUp: false);
+    state = state.copyWith(
+        remainingTime: state.timeLimit.toDouble(), isTimeUp: false);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 10), (timer) {
       if (state.remainingTime > 0) {
-        state = state.copyWith(remainingTime: state.remainingTime - 1);
+        state = state.copyWith(
+            remainingTime: (state.remainingTime - 0.01)
+                .clamp(0.0, state.timeLimit.toDouble()));
       } else {
         _handleTimeUp();
       }
     });
+  }
+
+  // タイマーを開始するメソッド
+  void startTimer() {
+    _startTimer();
+  }
+
+  // タイマーを停止するメソッド
+  void stopTimer() {
+    _timer?.cancel();
   }
 
   void _handleTimeUp() {
@@ -54,8 +65,8 @@ class QuizViewModel extends StateNotifier<QuizState> {
           isAnswered: false,
           isCorrect: false,
           isTimeUp: false,
+          remainingTime: state.timeLimit.toDouble(),
         );
-        _startTimer();
       } else {
         state = state.copyWith(showResult: true);
       }
@@ -83,8 +94,8 @@ class QuizViewModel extends StateNotifier<QuizState> {
           isAnswered: false,
           isCorrect: false,
           isTimeUp: false,
+          remainingTime: state.timeLimit.toDouble(),
         );
-        _startTimer();
       } else {
         state = state.copyWith(
           showResult: true,
@@ -105,12 +116,11 @@ class QuizViewModel extends StateNotifier<QuizState> {
       isCorrect: false,
       showResult: false,
       timeLimit: 10,
-      remainingTime: 10,
+      remainingTime: 10.0,
       isTimeUp: false,
       categories: state.categories,
       selectedCategoryId: state.selectedCategoryId,
     );
-    _startTimer();
   }
 
   void selectCategory(String categoryId) {
@@ -122,10 +132,9 @@ class QuizViewModel extends StateNotifier<QuizState> {
       isAnswered: false,
       isCorrect: false,
       showResult: false,
-      remainingTime: state.timeLimit,
+      remainingTime: state.timeLimit.toDouble(),
       isTimeUp: false,
     );
-    _startTimer();
   }
 
   @override
