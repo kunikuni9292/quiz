@@ -10,6 +10,27 @@ class QuizView extends HookConsumerWidget {
     final quizState = ref.watch(quizViewModelProvider);
     final viewModel = ref.read(quizViewModelProvider.notifier);
 
+    if (quizState.showResult) {
+      Future.microtask(() {
+        Navigator.pushReplacementNamed(context, '/result');
+      });
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (quizState.questions.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final currentQuestion = quizState.questions[quizState.currentQuestionIndex];
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -23,124 +44,120 @@ class QuizView extends HookConsumerWidget {
           ),
         ),
         child: SafeArea(
-          child: quizState.questions.isEmpty
-              ? const Center(
-                  child: CircularProgressIndicator(),
-                )
-              : Padding(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '問題 ${quizState.currentQuestionIndex + 1}/${quizState.questions.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'スコア: ${quizState.score}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  currentQuestion.question,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 20),
-                      Text(
-                        '問題 ${quizState.currentQuestionIndex + 1}/${quizState.questions.length}',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
-                                ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 40),
-                      Text(
-                        quizState
-                            .questions[quizState.currentQuestionIndex].question,
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 40),
-                      ...quizState
-                          .questions[quizState.currentQuestionIndex].options
-                          .asMap()
-                          .entries
-                          .map((entry) {
-                        final option = entry.value;
-                        final isSelected = quizState.isAnswered &&
-                            option ==
-                                quizState
-                                    .questions[quizState.currentQuestionIndex]
-                                    .correctAnswer;
-                        final isWrong = quizState.isAnswered &&
-                            !quizState.isCorrect &&
-                            option ==
-                                quizState
-                                    .questions[quizState.currentQuestionIndex]
-                                    .correctAnswer;
+                  itemCount: currentQuestion.options.length,
+                  itemBuilder: (context, index) {
+                    final option = currentQuestion.options[index];
+                    final isSelected = quizState.isAnswered &&
+                        option == currentQuestion.correctAnswer;
+                    final isWrong = quizState.isAnswered &&
+                        option != currentQuestion.correctAnswer;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: ElevatedButton(
-                            onPressed: quizState.isAnswered
-                                ? null
-                                : () => viewModel.answerQuestion(option),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isSelected
-                                  ? Colors.green
-                                  : isWrong
-                                      ? Colors.red
-                                      : Colors.white,
-                              foregroundColor: isSelected || isWrong
-                                  ? Colors.white
-                                  : Theme.of(context).colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Text(
-                              option,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: ElevatedButton(
+                        onPressed: quizState.isAnswered
+                            ? null
+                            : () => viewModel.answerQuestion(option),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSelected
+                              ? Colors.green
+                              : isWrong
+                                  ? Colors.red
+                                  : Colors.white,
+                          foregroundColor: isSelected || isWrong
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
                           ),
-                        );
-                      }).toList(),
-                      const Spacer(),
-                      if (quizState.isAnswered)
-                        ElevatedButton(
-                          onPressed: () {
-                            if (quizState.currentQuestionIndex <
-                                quizState.questions.length - 1) {
-                              viewModel.nextQuestion();
-                            } else {
-                              Navigator.pushNamed(context, '/result');
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                          ),
-                          child: Text(
-                            quizState.currentQuestionIndex <
-                                    quizState.questions.length - 1
-                                ? '次の問題へ'
-                                : '結果を見る',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                    ],
+                        child: Text(
+                          option,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: isSelected || isWrong
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (quizState.isAnswered)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: AnimatedOpacity(
+                    opacity: quizState.isAnswered ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 500),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: quizState.isCorrect ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        quizState.isCorrect ? '正解！' : '不正解...',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                 ),
+            ],
+          ),
         ),
       ),
     );
