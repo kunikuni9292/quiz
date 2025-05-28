@@ -233,6 +233,7 @@ mixin _$QuizState {
   List<Quiz> get questions => throw _privateConstructorUsedError;
   bool get isAnswered => throw _privateConstructorUsedError;
   bool get isCorrect => throw _privateConstructorUsedError;
+  bool get showResult => throw _privateConstructorUsedError;
 
   /// Serializes this QuizState to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -255,6 +256,7 @@ abstract class $QuizStateCopyWith<$Res> {
     List<Quiz> questions,
     bool isAnswered,
     bool isCorrect,
+    bool showResult,
   });
 }
 
@@ -278,6 +280,7 @@ class _$QuizStateCopyWithImpl<$Res, $Val extends QuizState>
     Object? questions = null,
     Object? isAnswered = null,
     Object? isCorrect = null,
+    Object? showResult = null,
   }) {
     return _then(
       _value.copyWith(
@@ -306,6 +309,11 @@ class _$QuizStateCopyWithImpl<$Res, $Val extends QuizState>
                     ? _value.isCorrect
                     : isCorrect // ignore: cast_nullable_to_non_nullable
                         as bool,
+            showResult:
+                null == showResult
+                    ? _value.showResult
+                    : showResult // ignore: cast_nullable_to_non_nullable
+                        as bool,
           )
           as $Val,
     );
@@ -327,6 +335,7 @@ abstract class _$$QuizStateImplCopyWith<$Res>
     List<Quiz> questions,
     bool isAnswered,
     bool isCorrect,
+    bool showResult,
   });
 }
 
@@ -349,6 +358,7 @@ class __$$QuizStateImplCopyWithImpl<$Res>
     Object? questions = null,
     Object? isAnswered = null,
     Object? isCorrect = null,
+    Object? showResult = null,
   }) {
     return _then(
       _$QuizStateImpl(
@@ -377,6 +387,11 @@ class __$$QuizStateImplCopyWithImpl<$Res>
                 ? _value.isCorrect
                 : isCorrect // ignore: cast_nullable_to_non_nullable
                     as bool,
+        showResult:
+            null == showResult
+                ? _value.showResult
+                : showResult // ignore: cast_nullable_to_non_nullable
+                    as bool,
       ),
     );
   }
@@ -391,6 +406,7 @@ class _$QuizStateImpl implements _QuizState {
     required final List<Quiz> questions,
     this.isAnswered = false,
     this.isCorrect = false,
+    this.showResult = false,
   }) : _questions = questions;
 
   factory _$QuizStateImpl.fromJson(Map<String, dynamic> json) =>
@@ -414,10 +430,13 @@ class _$QuizStateImpl implements _QuizState {
   @override
   @JsonKey()
   final bool isCorrect;
+  @override
+  @JsonKey()
+  final bool showResult;
 
   @override
   String toString() {
-    return 'QuizState(currentQuestionIndex: $currentQuestionIndex, score: $score, questions: $questions, isAnswered: $isAnswered, isCorrect: $isCorrect)';
+    return 'QuizState(currentQuestionIndex: $currentQuestionIndex, score: $score, questions: $questions, isAnswered: $isAnswered, isCorrect: $isCorrect, showResult: $showResult)';
   }
 
   @override
@@ -435,7 +454,9 @@ class _$QuizStateImpl implements _QuizState {
             (identical(other.isAnswered, isAnswered) ||
                 other.isAnswered == isAnswered) &&
             (identical(other.isCorrect, isCorrect) ||
-                other.isCorrect == isCorrect));
+                other.isCorrect == isCorrect) &&
+            (identical(other.showResult, showResult) ||
+                other.showResult == showResult));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -447,6 +468,7 @@ class _$QuizStateImpl implements _QuizState {
     const DeepCollectionEquality().hash(_questions),
     isAnswered,
     isCorrect,
+    showResult,
   );
 
   /// Create a copy of QuizState
@@ -470,6 +492,7 @@ abstract class _QuizState implements QuizState {
     required final List<Quiz> questions,
     final bool isAnswered,
     final bool isCorrect,
+    final bool showResult,
   }) = _$QuizStateImpl;
 
   factory _QuizState.fromJson(Map<String, dynamic> json) =
@@ -485,6 +508,8 @@ abstract class _QuizState implements QuizState {
   bool get isAnswered;
   @override
   bool get isCorrect;
+  @override
+  bool get showResult;
 
   /// Create a copy of QuizState
   /// with the given fields replaced by the non-null parameter values.

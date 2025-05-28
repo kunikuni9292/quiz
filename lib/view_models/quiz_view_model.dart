@@ -1,5 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../models/quiz_model.dart';
+import '../models/quiz_data.dart';
 
 final quizViewModelProvider = StateNotifierProvider<QuizViewModel, QuizState>((
   ref,
@@ -13,18 +14,10 @@ class QuizViewModel extends StateNotifier<QuizState> {
         QuizState(
           currentQuestionIndex: 0,
           score: 0,
-          questions: [
-            const Quiz(
-              question: '日本の首都は？',
-              answers: ['東京', '大阪', '名古屋', '福岡'],
-              correctAnswer: '東京',
-            ),
-            const Quiz(
-              question: '世界で最も大きな大陸は？',
-              answers: ['アジア', 'アフリカ', '北アメリカ', '南アメリカ'],
-              correctAnswer: 'アジア',
-            ),
-          ],
+          questions: quizData,
+          isAnswered: false,
+          isCorrect: false,
+          showResult: false,
         ),
       );
 
@@ -45,6 +38,8 @@ class QuizViewModel extends StateNotifier<QuizState> {
           isAnswered: false,
           isCorrect: false,
         );
+      } else {
+        state = state.copyWith(showResult: true);
       }
     });
   }
@@ -55,6 +50,7 @@ class QuizViewModel extends StateNotifier<QuizState> {
       score: 0,
       isAnswered: false,
       isCorrect: false,
+      showResult: false,
     );
   }
 }

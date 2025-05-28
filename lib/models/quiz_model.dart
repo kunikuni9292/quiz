@@ -22,6 +22,7 @@ class QuizState with _$QuizState {
     required List<Quiz> questions,
     @Default(false) bool isAnswered,
     @Default(false) bool isCorrect,
+    @Default(false) bool showResult,
   }) = _QuizState;
 
   factory QuizState.fromJson(Map<String, dynamic> json) =>

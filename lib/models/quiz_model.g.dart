@@ -29,6 +29,7 @@ _$QuizStateImpl _$$QuizStateImplFromJson(Map<String, dynamic> json) =>
               .toList(),
       isAnswered: json['isAnswered'] as bool? ?? false,
       isCorrect: json['isCorrect'] as bool? ?? false,
+      showResult: json['showResult'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$QuizStateImplToJson(_$QuizStateImpl instance) =>
@@ -38,4 +39,5 @@ Map<String, dynamic> _$$QuizStateImplToJson(_$QuizStateImpl instance) =>
       'questions': instance.questions,
       'isAnswered': instance.isAnswered,
       'isCorrect': instance.isCorrect,
+      'showResult': instance.showResult,
     };
