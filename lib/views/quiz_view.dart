@@ -13,11 +13,15 @@ class QuizView extends HookConsumerWidget {
     final viewModel = ref.read(quizViewModelProvider.notifier);
     final currentQuestion = quizState.questions[quizState.currentQuestionIndex];
     final displayedText = useState('');
+    final isAnimationStopped = useState(false);
+    final showOptions = useState(false);
 
     useEffect(() {
       // 問題文と表示文字をリセット
       final questionText = currentQuestion.question;
       displayedText.value = '';
+      isAnimationStopped.value = false;
+      showOptions.value = false;
 
       // ローカルの文字インデックス
       var charIndex = 0;
@@ -26,7 +30,7 @@ class QuizView extends HookConsumerWidget {
       final timer = Timer.periodic(
         const Duration(milliseconds: 100),
         (t) {
-          if (charIndex < questionText.length) {
+          if (!isAnimationStopped.value && charIndex < questionText.length) {
             displayedText.value += questionText[charIndex++];
           } else {
             t.cancel();
@@ -137,65 +141,99 @@ class QuizView extends HookConsumerWidget {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  displayedText.value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: currentQuestion.options.length,
-                  itemBuilder: (context, index) {
-                    final option = currentQuestion.options[index];
-                    final isSelected = quizState.isAnswered &&
-                        option == currentQuestion.correctAnswer;
-                    final isWrong = quizState.isAnswered &&
-                        option != currentQuestion.correctAnswer;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: ElevatedButton(
-                        onPressed: quizState.isAnswered
-                            ? null
-                            : () => viewModel.answerQuestion(option),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isSelected
-                              ? Colors.green
-                              : isWrong
-                                  ? Colors.red
-                                  : Colors.white,
-                          foregroundColor: isSelected || isWrong
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.primary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 16,
+                child: Column(
+                  children: [
+                    Text(
+                      displayedText.value,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (!isAnimationStopped.value)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            isAnimationStopped.value = true;
+                            showOptions.value = true;
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          option,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: isSelected || isWrong
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                          child: const Text(
+                            'ストップ！',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    );
-                  },
+                  ],
                 ),
               ),
+              const SizedBox(height: 20),
+              if (showOptions.value)
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: currentQuestion.options.length,
+                    itemBuilder: (context, index) {
+                      final option = currentQuestion.options[index];
+                      final isSelected = quizState.isAnswered &&
+                          option == currentQuestion.correctAnswer;
+                      final isWrong = quizState.isAnswered &&
+                          option != currentQuestion.correctAnswer;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: ElevatedButton(
+                          onPressed: quizState.isAnswered
+                              ? null
+                              : () => viewModel.answerQuestion(option),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isSelected
+                                ? Colors.green
+                                : isWrong
+                                    ? Colors.red
+                                    : Colors.white,
+                            foregroundColor: isSelected || isWrong
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            option,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: isSelected || isWrong
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               if (quizState.isAnswered)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
