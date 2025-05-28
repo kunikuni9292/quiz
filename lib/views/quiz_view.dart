@@ -58,6 +58,7 @@ class QuizView extends HookConsumerWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       'スコア: ${quizState.score}',
@@ -66,6 +67,7 @@ class QuizView extends HookConsumerWidget {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
