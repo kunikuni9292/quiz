@@ -38,16 +38,15 @@ class QuizView extends HookConsumerWidget {
       return timer.cancel;
     }, [quizState.currentQuestionIndex]);
 
-    if (quizState.showResult) {
-      Future.microtask(() {
-        Navigator.pushReplacementNamed(context, '/result');
-      });
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+    // 結果画面への遷移をuseEffectで制御
+    useEffect(() {
+      if (quizState.showResult) {
+        Future.microtask(() {
+          Navigator.pushReplacementNamed(context, '/result');
+        });
+      }
+      return null;
+    }, [quizState.showResult]);
 
     if (quizState.questions.isEmpty) {
       return const Scaffold(
