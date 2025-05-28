@@ -12,7 +12,7 @@ import 'package:quiz/main.dart';
 void main() {
   testWidgets('クイズアプリの基本テスト', (WidgetTester tester) async {
     // アプリをビルド
-    await tester.pumpWidget(const ProviderScope(child: QuizApp()));
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
     await tester.pumpAndSettle();
 
     // 最初の問題が表示されていることを確認

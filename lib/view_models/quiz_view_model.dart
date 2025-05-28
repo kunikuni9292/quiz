@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../models/quiz_model.dart';
 import '../models/quiz_data.dart';
@@ -9,19 +10,63 @@ final quizViewModelProvider = StateNotifierProvider<QuizViewModel, QuizState>((
 });
 
 class QuizViewModel extends StateNotifier<QuizState> {
+  Timer? _timer;
+
   QuizViewModel()
-    : super(
-        QuizState(
-          currentQuestionIndex: 0,
-          score: 0,
-          questions: quizData,
+      : super(
+          QuizState(
+            currentQuestionIndex: 0,
+            score: 0,
+            questions: quizData,
+            isAnswered: false,
+            isCorrect: false,
+            showResult: false,
+            timeLimit: 10,
+            remainingTime: 10,
+            isTimeUp: false,
+            categories: [],
+            selectedCategoryId: '',
+          ),
+        ) {
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    state = state.copyWith(remainingTime: state.timeLimit, isTimeUp: false);
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state.remainingTime > 0) {
+        state = state.copyWith(remainingTime: state.remainingTime - 1);
+      } else {
+        _handleTimeUp();
+      }
+    });
+  }
+
+  void _handleTimeUp() {
+    _timer?.cancel();
+    state = state.copyWith(isTimeUp: true, isAnswered: true);
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (state.currentQuestionIndex < state.questions.length - 1) {
+        state = state.copyWith(
+          currentQuestionIndex: state.currentQuestionIndex + 1,
           isAnswered: false,
           isCorrect: false,
-          showResult: false,
-        ),
-      );
+          isTimeUp: false,
+        );
+        _startTimer();
+      } else {
+        state = state.copyWith(showResult: true);
+      }
+    });
+  }
 
   void answerQuestion(String selectedAnswer) {
+    if (state.isAnswered) return;
+
+    _timer?.cancel();
     final currentQuestion = state.questions[state.currentQuestionIndex];
     final isCorrect = selectedAnswer == currentQuestion.correctAnswer;
 
@@ -37,7 +82,9 @@ class QuizViewModel extends StateNotifier<QuizState> {
           currentQuestionIndex: state.currentQuestionIndex + 1,
           isAnswered: false,
           isCorrect: false,
+          isTimeUp: false,
         );
+        _startTimer();
       } else {
         state = state.copyWith(showResult: true);
       }
@@ -45,12 +92,21 @@ class QuizViewModel extends StateNotifier<QuizState> {
   }
 
   void resetQuiz() {
+    _timer?.cancel();
     state = state.copyWith(
       currentQuestionIndex: 0,
       score: 0,
       isAnswered: false,
       isCorrect: false,
       showResult: false,
+      isTimeUp: false,
     );
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }

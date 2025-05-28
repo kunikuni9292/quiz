@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'views/quiz_view.dart';
+import 'package:quiz/views/category_selection_view.dart';
+import 'package:quiz/views/quiz_view.dart';
+import 'package:quiz/views/result_view.dart';
 
 void main() {
-  runApp(const ProviderScope(child: QuizApp()));
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
-class QuizApp extends StatelessWidget {
-  const QuizApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'クイズアプリv3',
+      title: 'クイズアプリ',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const QuizView(),
+      initialRoute: '/category',
+      routes: {
+        '/category': (context) => const CategorySelectionView(),
+        '/quiz': (context) => const QuizView(),
+        '/result': (context) => const ResultView(),
+      },
     );
   }
 }
@@ -74,51 +85,50 @@ class _QuizHomePageState extends State<QuizHomePage> {
         title: const Text('クイズアプリ'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body:
-          _currentQuestionIndex < _questions.length
-              ? Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _questions[_currentQuestionIndex]['question'],
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ...(_questions[_currentQuestionIndex]['answers']
-                            as List<String>)
-                        .map(
-                          (answer) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: ElevatedButton(
-                              onPressed: () => _answerQuestion(answer),
-                              child: Text(answer),
-                            ),
+      body: _currentQuestionIndex < _questions.length
+          ? Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _questions[_currentQuestionIndex]['question'],
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ...(_questions[_currentQuestionIndex]['answers']
+                          as List<String>)
+                      .map(
+                        (answer) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: ElevatedButton(
+                            onPressed: () => _answerQuestion(answer),
+                            child: Text(answer),
                           ),
-                        )
-                        .toList(),
-                  ],
-                ),
-              )
-              : Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'クイズ終了！\nスコア: $_score/${_questions.length}',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _resetQuiz,
-                      child: const Text('もう一度挑戦'),
-                    ),
-                  ],
-                ),
+                        ),
+                      )
+                      .toList(),
+                ],
               ),
+            )
+          : Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'クイズ終了！\nスコア: $_score/${_questions.length}',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _resetQuiz,
+                    child: const Text('もう一度挑戦'),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
