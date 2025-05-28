@@ -60,14 +60,41 @@ class QuizView extends HookConsumerWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      'スコア: ${quizState.score}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: quizState.remainingTime <= 3
+                                ? Colors.red
+                                : Colors.white.withAlpha(50),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${quizState.remainingTime}秒',
+                            style: TextStyle(
+                              color: quizState.remainingTime <= 3
+                                  ? Colors.white
+                                  : Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'スコア: ${quizState.score}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ],
                 ),
