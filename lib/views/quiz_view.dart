@@ -62,26 +62,36 @@ class QuizView extends HookConsumerWidget {
                     ),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: quizState.remainingTime <= 3
-                                ? Colors.red
-                                : Colors.white.withAlpha(50),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${quizState.remainingTime}秒',
-                            style: TextStyle(
-                              color: quizState.remainingTime <= 3
-                                  ? Colors.white
-                                  : Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        SizedBox(
+                          width: 100,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: LinearProgressIndicator(
+                                  value: quizState.remainingTime /
+                                      quizState.timeLimit,
+                                  backgroundColor: Colors.white.withAlpha(30),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    quizState.remainingTime > 6
+                                        ? Colors.green
+                                        : quizState.remainingTime > 3
+                                            ? Colors.orange
+                                            : Colors.red,
+                                  ),
+                                  minHeight: 20,
+                                ),
+                              ),
+                              Text(
+                                '${quizState.remainingTime}秒',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 16),
