@@ -28,9 +28,11 @@ class MyGame extends FlameGame
     add(Background(layerColors: levels[currentStageIndex].backgroundColors));
 
     // 2. プレイヤーを生成して指定位置に配置
-    // 地面より1px上に浮かせて配置し、重力で確実に落ちて着地するようにする
+    // 地面より2px上に浮かせて配置し、重力で確実に落ちて着地するようにする
     final playerSpawnY =
-        levels[currentStageIndex].groundY - PlayerConstants.smallSize.y - 1;
+        levels[currentStageIndex].groundY - PlayerConstants.smallSize.y - 2;
+    print(
+        '>> spawnY = $playerSpawnY (groundY: ${levels[currentStageIndex].groundY}, playerSize: ${PlayerConstants.smallSize.y})');
     player = Player(position: Vector2(100, playerSpawnY));
     add(player);
     print(
@@ -43,7 +45,8 @@ class MyGame extends FlameGame
       for (final plat in levels[currentStageIndex].platformList) {
         final platform = Platform(position: plat.position, size: plat.size);
         add(platform);
-        print('Platform added at: ${plat.position}, size: ${plat.size}');
+        print(
+            'Platform added at: ${plat.position}, size: ${plat.size} (top: ${plat.position.y}, bottom: ${plat.position.y + plat.size.y})');
       }
     } else {
       // 後から Tiled 読み込みを実装するときはここを差し替える

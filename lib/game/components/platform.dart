@@ -21,6 +21,8 @@ class Platform extends PositionComponent with CollisionCallbacks {
       position: Vector2.zero(),
       anchor: Anchor.topLeft,
     ));
+    print(
+        'Platform Hitbox added: position=${position}, size=${size}, anchor=topLeft');
   }
 
   @override

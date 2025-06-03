@@ -38,6 +38,7 @@ class Player extends RectangleComponent
     // 初期状態では空中にいるとみなし、重力で地面に落ちるフローを正常に動作させる
     onGround = false;
     state = PlayerState.idle;
+    print('Player onGround 初期値 = $onGround');
   }
 
   @override
@@ -113,9 +114,9 @@ class Player extends RectangleComponent
   void update(double dt) {
     super.update(dt);
 
-    // デバッグ用：位置と速度を表示（必要に応じてコメントアウト）
+    // デバッグ用：詳細な状態をフレームごとに表示
     print(
-        'Player pos: ${position.x.toStringAsFixed(1)}, vel: ${velocity.x.toStringAsFixed(1)}, state: $state, onGround: $onGround');
+        'before: y=${position.y.toStringAsFixed(1)}, vy=${velocity.y.toStringAsFixed(1)}, onGround=$onGround, state=$state');
 
     // 地面にいる場合はY方向の速度をリセット（微小な重力による落下を防ぐ）
     if (onGround && state != PlayerState.stomp) {
@@ -125,14 +126,21 @@ class Player extends RectangleComponent
     // マリオらしい左右移動の処理
     _updateHorizontalMovement(dt);
 
-    // マリオらしいジャンプの処理
-    _updateJumpAndGravity(dt);
+    // 地面にいないときだけジャンプ/重力処理を行う
+    if (!onGround) {
+      print('applying gravity: before vy=${velocity.y.toStringAsFixed(1)}');
+      _updateJumpAndGravity(dt);
+      print('applying gravity: after vy=${velocity.y.toStringAsFixed(1)}');
+    }
 
     // 踏みつけ後の無敵タイマー処理
     _updateInvincibilityTimer(dt);
 
     // 位置更新
     position += velocity * dt;
+
+    print(
+        'after:  y=${position.y.toStringAsFixed(1)}, vy=${velocity.y.toStringAsFixed(1)}, onGround=$onGround, playerBottom=${(position.y + size.y).toStringAsFixed(1)}');
 
     // 演出用：ジャンプ中か落下中かを state で分ける
     if (!onGround) {
@@ -184,13 +192,16 @@ class Player extends RectangleComponent
   }
 
   void _updateJumpAndGravity(double dt) {
-    // マリオらしいジャンプ：ボタン押し続けで高く跳べる
-    if (state == PlayerState.jump && jumpPressed && velocity.y < 0) {
-      // ジャンプボタンを押し続けていると、重力を半分に
-      velocity.y += PlayerConstants.gravity * dt * 0.5;
-    } else {
-      // 通常の重力を適用
-      velocity.y += PlayerConstants.gravity * dt;
+    // 地面にいないときだけ重力を適用する
+    if (!onGround) {
+      // マリオらしいジャンプ：ボタン押し続けで高く跳べる
+      if (state == PlayerState.jump && jumpPressed && velocity.y < 0) {
+        // ジャンプボタンを押し続けていると、重力を半分に
+        velocity.y += PlayerConstants.gravity * dt * 0.5;
+      } else {
+        // 通常の重力を適用
+        velocity.y += PlayerConstants.gravity * dt;
+      }
     }
   }
 
@@ -239,22 +250,21 @@ class Player extends RectangleComponent
 
     if (other is Platform) {
       print(
-          'Collision with platform detected! Player Y: ${position.y + size.y}, Platform Y: ${other.position.y}, Velocity Y: ${velocity.y}');
+          'Collision with platform detected! Player Y: ${position.y.toStringAsFixed(1)}, PlayerBottom: ${(position.y + size.y).toStringAsFixed(1)}, Platform Top: ${other.position.y.toStringAsFixed(1)}, Velocity Y: ${velocity.y.toStringAsFixed(1)}');
 
-      // プレイヤーの下端が地面の上端付近にあり、下向きの速度を持っている場合に着地とみなす
-      final playerBottom = position.y + size.y;
-      final platformTop = other.position.y;
-
-      // 判定範囲を広げて（±30px）すり抜けを防ぐ
-      if (velocity.y >= 0 &&
-          playerBottom >= platformTop - 30 &&
-          playerBottom <= platformTop + 30) {
-        // 着地処理
+      // intersectionPoints が空でなければ、どれだけ高速でも必ず着地扱い
+      if (intersectionPoints.isNotEmpty && velocity.y >= 0) {
+        final platformTop = other.position.y;
+        // 着地処理：プレイヤーをプラットフォームの上にスナップ
         position.y = platformTop - size.y;
         velocity.y = 0;
         onGround = true;
         state = (velocity.x.abs() > 10) ? PlayerState.run : PlayerState.idle;
-        print('Successfully landed on platform!');
+        print(
+            'Landed on platform via collisionPoints! New position.y: ${position.y.toStringAsFixed(1)}, onGround: $onGround');
+      } else {
+        print(
+            'Landing condition not met - intersectionPoints: ${intersectionPoints.length}, velocity.y >= 0: ${velocity.y >= 0}');
       }
     }
 
