@@ -1,6 +1,6 @@
 {
-    "name": "quiz",
-    "short_name": "quiz",
+    "name": "my_mario_game",
+    "short_name": "my_mario_game",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

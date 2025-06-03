@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/quiz.iml" filepath="$PROJECT_DIR$/quiz.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android/quiz_android.iml" filepath="$PROJECT_DIR$/android/quiz_android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/my_mario_game.iml" filepath="$PROJECT_DIR$/my_mario_game.iml" />
+      <module fileurl="file://$PROJECT_DIR$/android/my_mario_game_android.iml" filepath="$PROJECT_DIR$/android/my_mario_game_android.iml" />
     </modules>
   </component>
 </project>
