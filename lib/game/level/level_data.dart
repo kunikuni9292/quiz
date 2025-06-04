@@ -31,9 +31,6 @@ class LevelData {
   final List<ItemData> itemList;
   final Vector2 goalPosition;
   final List<Color> backgroundColors; // 今は色で背景代用
-  final double worldWidth;
-  final double worldHeight;
-  final double groundY;
 
   LevelData({
     required this.loadType,
@@ -43,9 +40,6 @@ class LevelData {
     required this.itemList,
     required this.goalPosition,
     required this.backgroundColors,
-    required this.worldWidth,
-    required this.worldHeight,
-    required this.groundY,
   });
 
   static List<LevelData> allLevels() {
@@ -53,27 +47,35 @@ class LevelData {
       LevelData(
         loadType: LevelLoadType.code,
         platformList: [
-          PlatformData(position: Vector2(0, 450), size: Vector2(800, 50)),
-          PlatformData(position: Vector2(200, 350), size: Vector2(150, 20)),
-          // 必要なら他の足場を追加
+          // プラットフォームの位置（基準サイズ600pxでの相対位置）
+          PlatformData(
+              position: Vector2(300, -100), size: Vector2(200, 30)), // 浮遊足場
+          PlatformData(
+              position: Vector2(600, -150), size: Vector2(150, 25)), // 高い足場
+          PlatformData(
+              position: Vector2(900, -80), size: Vector2(180, 35)), // 長い足場
         ],
         enemyList: [
-          EnemyData(position: Vector2(400, 418), type: EnemyType.goomba),
-          // 他の敵を追加する場合はここに記載
+          EnemyData(
+              position: Vector2(500, -32), type: EnemyType.goomba), // 地面の敵
+          EnemyData(
+              position: Vector2(750, -32), type: EnemyType.goomba), // 2体目の敵
         ],
         itemList: [
-          ItemData(position: Vector2(250, 318), type: ItemType.coin),
-          ItemData(position: Vector2(500, 450), type: ItemType.mushroom),
+          ItemData(
+              position: Vector2(350, -130), type: ItemType.coin), // 足場上のコイン
+          ItemData(
+              position: Vector2(650, -180), type: ItemType.coin), // 高い足場のコイン
+          ItemData(
+              position: Vector2(800, -50), type: ItemType.mushroom), // パワーアップ
+          ItemData(position: Vector2(1100, -40), type: ItemType.coin), // 遠くのコイン
         ],
-        goalPosition: Vector2(1200, 386),
+        goalPosition: Vector2(1400, -80), // ゴールフラグ（世界の右端近く）
         backgroundColors: [
           Colors.lightBlue.shade200,
           Colors.lightGreen.shade200,
           Colors.green.shade700,
         ],
-        worldWidth: 1600,
-        worldHeight: 600,
-        groundY: 450,
       ),
       // 今後のステージを追加する場合は LevelLoadType.tiled などで登録
     ];

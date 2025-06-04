@@ -5,11 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "chrome",
+            "name": "quiz",
             "request": "launch",
-            "name": "localhost に対して Chrome を起動する",
-            "url": "http://localhost:8080",
-            "webRoot": "${workspaceFolder}"
+            "type": "dart",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "quiz (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "quiz (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "program": "lib/main.dart"
         }
     ]
 }

@@ -18,14 +18,16 @@ class Enemy extends RectangleComponent
   Enemy({required Vector2 position, required this.type})
       : super(
           position: position,
-          size: EnemyConstants.size,
           anchor: Anchor.bottomLeft,
           paint: Paint()..color = Colors.red, // 敵は赤い四角で代用
         );
 
   @override
   Future<void> onLoad() async {
-    speed = EnemyConstants.walkSpeed(type);
+    // Set size and speed based on screen size
+    size = EnemyConstants.getSize(gameRef.size);
+    speed = EnemyConstants.getWalkSpeed(type, gameRef.size);
+
     add(RectangleHitbox(
       size: size,
       position: Vector2.zero(),

@@ -15,12 +15,14 @@ class Item extends RectangleComponent
   Item({required Vector2 position, required this.type})
       : super(
           position: position,
-          size: ItemConstants.size(type),
           anchor: Anchor.bottomLeft,
         );
 
   @override
   Future<void> onLoad() async {
+    // Set size based on screen size
+    size = ItemConstants.getSize(type, gameRef.size);
+
     // アイテムの見た目を改善
     _updateItemAppearance();
     add(RectangleHitbox(
