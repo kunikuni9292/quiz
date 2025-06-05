@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:math' as math;
 
 enum QuizCategory {
   general('一般常識', Colors.blue, Icons.lightbulb),
@@ -36,6 +37,37 @@ class Enemy {
 
   void heal() {
     currentHp = maxHp;
+  }
+}
+
+class ConfettiParticle {
+  double x;
+  double y;
+  double velocityX;
+  double velocityY;
+  double rotation;
+  double rotationSpeed;
+  Color color;
+  double size;
+  double gravity;
+
+  ConfettiParticle({
+    required this.x,
+    required this.y,
+    required this.velocityX,
+    required this.velocityY,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.color,
+    required this.size,
+    required this.gravity,
+  });
+
+  void update() {
+    x += velocityX;
+    y += velocityY;
+    velocityY += gravity;
+    rotation += rotationSpeed;
   }
 }
 
@@ -76,6 +108,12 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
   late AnimationController _shakeController;
   late Animation<double> _attackAnimation;
   late Animation<double> _shakeAnimation;
+
+  // 紙吹雪用の変数
+  late AnimationController _confettiController;
+  List<ConfettiParticle> confettiParticles = [];
+  bool isConfettiActive = false;
+  Timer? confettiTimer;
 
   final Map<QuizCategory, Enemy> enemies = {
     QuizCategory.general: Enemy(
@@ -656,6 +694,10 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+    _confettiController = AnimationController(
+      duration: const Duration(milliseconds: 3000),
+      vsync: this,
+    );
 
     _attackAnimation = Tween<double>(
       begin: 0.0,
@@ -672,14 +714,29 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
       parent: _shakeController,
       curve: Curves.elasticIn,
     ));
+
+    _confettiController.addListener(() {
+      if (isConfettiActive) {
+        setState(() {
+          for (var particle in confettiParticles) {
+            particle.update();
+          }
+          // 画面外に出たパーティクルを削除
+          confettiParticles.removeWhere((particle) =>
+              particle.y > MediaQuery.of(context).size.height + 100);
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     questionTimer?.cancel();
     inputTimer?.cancel();
+    confettiTimer?.cancel();
     _attackController.dispose();
     _shakeController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -869,7 +926,14 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
     _shakeController.forward();
 
     Timer(const Duration(milliseconds: 400), () {
+      bool wasDefeated = currentEnemy!.isDefeated;
       currentEnemy!.takeDamage(lastDamage);
+
+      // 敵を撃破した場合は紙吹雪を開始
+      if (!wasDefeated && currentEnemy!.isDefeated) {
+        _startConfetti();
+      }
+
       setState(() {});
     });
 
@@ -879,6 +943,52 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
       });
       _attackController.reset();
       _shakeController.reset();
+    });
+  }
+
+  void _startConfetti() {
+    final random = math.Random();
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    confettiParticles.clear();
+
+    // 50個の紙吹雪パーティクルを生成
+    for (int i = 0; i < 50; i++) {
+      confettiParticles.add(ConfettiParticle(
+        x: random.nextDouble() * screenWidth,
+        y: -20.0,
+        velocityX: (random.nextDouble() - 0.5) * 4,
+        velocityY: random.nextDouble() * 2 + 1,
+        rotation: random.nextDouble() * math.pi * 2,
+        rotationSpeed: (random.nextDouble() - 0.5) * 0.2,
+        color: [
+          Colors.red,
+          Colors.blue,
+          Colors.green,
+          Colors.yellow,
+          Colors.orange,
+          Colors.purple,
+          Colors.pink,
+          Colors.cyan,
+        ][random.nextInt(8)],
+        size: random.nextDouble() * 8 + 4,
+        gravity: random.nextDouble() * 0.2 + 0.1,
+      ));
+    }
+
+    setState(() {
+      isConfettiActive = true;
+    });
+
+    _confettiController.forward();
+
+    // 3秒後に紙吹雪を停止
+    confettiTimer = Timer(const Duration(milliseconds: 3000), () {
+      setState(() {
+        isConfettiActive = false;
+        confettiParticles.clear();
+      });
+      _confettiController.reset();
     });
   }
 
@@ -904,8 +1014,10 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
   void resetQuiz() {
     questionTimer?.cancel();
     inputTimer?.cancel();
+    confettiTimer?.cancel();
     _attackController.reset();
     _shakeController.reset();
+    _confettiController.reset();
     setState(() {
       selectedCategory = null;
       currentEnemy = null;
@@ -922,6 +1034,8 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
       inputTimeOut = false;
       isAttacking = false;
       lastDamage = 0;
+      isConfettiActive = false;
+      confettiParticles.clear();
     });
   }
 
@@ -1037,478 +1151,495 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
           onPressed: () {
             questionTimer?.cancel();
             inputTimer?.cancel();
+            confettiTimer?.cancel();
             setState(() {
               selectedCategory = null;
             });
           },
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 進捗表示
-              LinearProgressIndicator(
-                value: (currentQuestionIndex + 1) / currentQuestions.length,
-                backgroundColor: Colors.grey[300],
-                valueColor:
-                    AlwaysStoppedAnimation<Color>(selectedCategory!.color),
-              ),
-              const SizedBox(height: 8),
-
-              // 問題番号とスコア
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    '問題 ${currentQuestionIndex + 1}/${currentQuestions.length}',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold),
+                  // 進捗表示
+                  LinearProgressIndicator(
+                    value: (currentQuestionIndex + 1) / currentQuestions.length,
+                    backgroundColor: Colors.grey[300],
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(selectedCategory!.color),
                   ),
-                  Text(
-                    'スコア: $score',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
 
-              // 敵のHP表示
-              if (currentEnemy != null) ...[
-                AnimatedBuilder(
-                  animation: _shakeAnimation,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(
-                          _shakeAnimation.value * (isAttacking ? 1 : 0), 0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: selectedCategory!.color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: selectedCategory!.color.withOpacity(0.3)),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  currentEnemy!.emoji,
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  currentEnemy!.name,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: selectedCategory!.color,
-                                  ),
-                                ),
-                              ],
+                  // 問題番号とスコア
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '問題 ${currentQuestionIndex + 1}/${currentQuestions.length}',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'スコア: $score',
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 敵のHP表示
+                  if (currentEnemy != null) ...[
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                              _shakeAnimation.value * (isAttacking ? 1 : 0), 0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: selectedCategory!.color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color:
+                                      selectedCategory!.color.withOpacity(0.3)),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Expanded(
-                                  child: LinearProgressIndicator(
-                                    value: currentEnemy!.hpPercentage,
-                                    backgroundColor: Colors.red[200],
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      currentEnemy!.hpPercentage > 0.5
-                                          ? Colors.green
-                                          : currentEnemy!.hpPercentage > 0.2
-                                              ? Colors.orange
-                                              : Colors.red,
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      currentEnemy!.emoji,
+                                      style: const TextStyle(fontSize: 20),
                                     ),
-                                    minHeight: 6,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${currentEnemy!.currentHp}/${currentEnemy!.maxHp}',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (isAttacking && lastDamage > 0)
-                              AnimatedBuilder(
-                                animation: _attackAnimation,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: 1.0 - _attackAnimation.value,
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                          0, -15 * _attackAnimation.value),
-                                      child: Text(
-                                        '💥 -$lastDamage',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red,
-                                        ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      currentEnemy!.name,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedCategory!.color,
                                       ),
                                     ),
-                                  );
-                                },
-                              ),
-                            if (currentEnemy!.isDefeated)
-                              Container(
-                                margin: const EdgeInsets.only(top: 4),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(8),
+                                  ],
                                 ),
-                                child: const Text(
-                                  '🎯 撃破！',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: LinearProgressIndicator(
+                                        value: currentEnemy!.hpPercentage,
+                                        backgroundColor: Colors.red[200],
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          currentEnemy!.hpPercentage > 0.5
+                                              ? Colors.green
+                                              : currentEnemy!.hpPercentage > 0.2
+                                                  ? Colors.orange
+                                                  : Colors.red,
+                                        ),
+                                        minHeight: 6,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${currentEnemy!.currentHp}/${currentEnemy!.maxHp}',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (isAttacking && lastDamage > 0)
+                                  AnimatedBuilder(
+                                    animation: _attackAnimation,
+                                    builder: (context, child) {
+                                      return Opacity(
+                                        opacity: 1.0 - _attackAnimation.value,
+                                        child: Transform.translate(
+                                          offset: Offset(
+                                              0, -15 * _attackAnimation.value),
+                                          child: Text(
+                                            '💥 -$lastDamage',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 4),
-              ],
+                                if (currentEnemy!.isDefeated)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      '🎯 撃破！',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                  ],
 
-              // タイマー表示
-              if (isQuestionStarted && canAnswer)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: timeRemaining <= 5
-                        ? Colors.red[100]
-                        : selectedCategory!.color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.timer,
+                  // タイマー表示
+                  if (isQuestionStarted && canAnswer)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
                         color: timeRemaining <= 5
-                            ? Colors.red
-                            : selectedCategory!.color,
-                        size: 16,
+                            ? Colors.red[100]
+                            : selectedCategory!.color.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '残り時間: ${timeRemaining}秒',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: timeRemaining <= 5
-                              ? Colors.red
-                              : selectedCategory!.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // 入力モードのタイマー表示
-              if (isInputMode)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: inputTimeRemaining <= 1
-                        ? Colors.red[100]
-                        : Colors.orange[100],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.keyboard,
-                        color: inputTimeRemaining <= 1
-                            ? Colors.red
-                            : Colors.orange,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '文字選択: ${inputTimeRemaining}秒',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: inputTimeRemaining <= 1
-                              ? Colors.red
-                              : Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 8),
-
-              // 問題文 - 表示領域を縮小
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: selectedCategory!.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: selectedCategory!.color.withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (!isQuestionStarted)
-                        const Text(
-                          '準備はいいですか？\n「問題開始」を押してください',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.timer,
+                            color: timeRemaining <= 5
+                                ? Colors.red
+                                : selectedCategory!.color,
+                            size: 16,
                           ),
-                          textAlign: TextAlign.center,
-                        )
-                      else
-                        Text(
-                          _getCurrentQuestionText(),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      if (isAnswered &&
-                          MediaQuery.of(context).size.height > 600)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '正解: ${currentQuestion['answers'][currentQuestion['correctIndex']]}',
+                          const SizedBox(width: 4),
+                          Text(
+                            '残り時間: ${timeRemaining}秒',
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: timeRemaining <= 5
+                                  ? Colors.red
+                                  : selectedCategory!.color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // 入力モードのタイマー表示
+                  if (isInputMode)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: inputTimeRemaining <= 1
+                            ? Colors.red[100]
+                            : Colors.orange[100],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.keyboard,
+                            color: inputTimeRemaining <= 1
+                                ? Colors.red
+                                : Colors.orange,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '文字選択: ${inputTimeRemaining}秒',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: inputTimeRemaining <= 1
+                                  ? Colors.red
+                                  : Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+
+                  // 問題文 - 表示領域を縮小
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: selectedCategory!.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: selectedCategory!.color.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (!isQuestionStarted)
+                            const Text(
+                              '準備はいいですか？\n「問題開始」を押してください',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            )
+                          else
+                            Text(
+                              _getCurrentQuestionText(),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          if (isAnswered &&
+                              MediaQuery.of(context).size.height > 600)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '正解: ${currentQuestion['answers'][currentQuestion['correctIndex']]}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 入力表示エリア
+                  if (isInputMode || isAnswered && userInput.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.yellow[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.yellow[300]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '形式: ${currentQuestion['inputFormat']}',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getInputDisplay(),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: selectedCategory!.color,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
+                          if (isInputMode)
+                            Text(
+                              '${currentCharIndex + 1}文字目を選択',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.orange),
+                            ),
+                        ],
+                      ),
+                    ),
 
-              // 入力表示エリア
-              if (isInputMode || isAnswered && userInput.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.yellow[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.yellow[300]!),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '形式: ${currentQuestion['inputFormat']}',
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getInputDisplay(),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: selectedCategory!.color,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (isInputMode)
-                        Text(
-                          '${currentCharIndex + 1}文字目を選択',
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.orange),
-                        ),
-                    ],
-                  ),
-                ),
-
-              // 問題開始ボタンまたは解答ボタン
-              if (!isQuestionStarted)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: ElevatedButton(
-                    onPressed: startQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedCategory!.color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      '🚀 問題開始！',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )
-              else if (canAnswer)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: ElevatedButton(
-                    onPressed: startInputMode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: selectedCategory!.color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      '⚡ 解答！',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-
-              // 文字選択ボタン - Expandedで残りのスペースを活用
-              if (isInputMode)
-                Expanded(
-                  flex: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[300]!),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '${currentCharIndex + 1}文字目を選択',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
+                  // 問題開始ボタンまたは解答ボタン
+                  if (!isQuestionStarted)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: ElevatedButton(
+                        onPressed: startQuestion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedCategory!.color,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: GridView.count(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 3.0,
-                            children: (currentQuestion['charOptions']
-                                    [currentCharIndex] as List<String>)
-                                .map((char) => ElevatedButton(
-                                      onPressed: () => selectCharacter(char),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.orange,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        char,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ))
-                                .toList(),
+                        child: const Text(
+                          '🚀 問題開始！',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
+                  else if (canAnswer)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: ElevatedButton(
+                        onPressed: startInputMode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedCategory!.color,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                      ],
+                        child: const Text(
+                          '⚡ 解答！',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
 
-              // 結果表示
-              if (isAnswered) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isCorrect ? Colors.green[100] : Colors.red[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isCorrect ? Colors.green : Colors.red,
-                      width: 2,
+                  // 文字選択ボタン - Expandedで残りのスペースを活用
+                  if (isInputMode)
+                    Expanded(
+                      flex: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange[300]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '${currentCharIndex + 1}文字目を選択',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: GridView.count(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 8,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 3.0,
+                                children: (currentQuestion['charOptions']
+                                        [currentCharIndex] as List<String>)
+                                    .map((char) => ElevatedButton(
+                                          onPressed: () =>
+                                              selectCharacter(char),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.orange,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            char,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        isCorrect
-                            ? '🎉 正解！'
-                            : inputTimeOut
-                                ? '⏰ タイムアウト'
-                                : '❌ 不正解',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+
+                  // 結果表示
+                  if (isAnswered) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isCorrect ? Colors.green[100] : Colors.red[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
                           color: isCorrect ? Colors.green : Colors.red,
+                          width: 2,
                         ),
                       ),
-                      if (isCorrect) ...[
-                        Text(
-                          '段階: ${currentSegmentIndex + 1} | 入力: ${userInput.join('')}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ] else if (userInput.isNotEmpty) ...[
-                        Text(
-                          '入力: ${userInput.join('')} | 正解: ${currentQuestion['correctChars'].join('')}',
-                          style:
-                              const TextStyle(fontSize: 12, color: Colors.red),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (!isLastQuestion)
-                  ElevatedButton(
-                    onPressed: nextQuestion,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Column(
+                        children: [
+                          Text(
+                            isCorrect
+                                ? '🎉 正解！'
+                                : inputTimeOut
+                                    ? '⏰ タイムアウト'
+                                    : '❌ 不正解',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isCorrect ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          if (isCorrect) ...[
+                            Text(
+                              '段階: ${currentSegmentIndex + 1} | 入力: ${userInput.join('')}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ] else if (userInput.isNotEmpty) ...[
+                            Text(
+                              '入力: ${userInput.join('')} | 正解: ${currentQuestion['correctChars'].join('')}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.red),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    child: const Text(
-                      '次の問題へ',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  )
-                else
-                  _buildFinalResult(),
-              ],
-            ],
+                    const SizedBox(height: 8),
+                    if (!isLastQuestion)
+                      ElevatedButton(
+                        onPressed: nextQuestion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: const Text(
+                          '次の問題へ',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    else
+                      _buildFinalResult(),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ),
+
+          // 紙吹雪エフェクト
+          if (isConfettiActive)
+            IgnorePointer(
+              child: CustomPaint(
+                painter: ConfettiPainter(confettiParticles),
+                size: Size.infinite,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1639,5 +1770,41 @@ class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
     if (percentage >= 60) return '🥈 上級者！';
     if (percentage >= 40) return '🥉 中級者！';
     return '📚 初心者！';
+  }
+}
+
+class ConfettiPainter extends CustomPainter {
+  final List<ConfettiParticle> particles;
+
+  ConfettiPainter(this.particles);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var particle in particles) {
+      final paint = Paint()
+        ..color = particle.color
+        ..style = PaintingStyle.fill;
+
+      canvas.save();
+      canvas.translate(particle.x, particle.y);
+      canvas.rotate(particle.rotation);
+
+      // 長方形の紙吹雪を描画
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: particle.size,
+          height: particle.size * 0.6,
+        ),
+        paint,
+      );
+
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }
