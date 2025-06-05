@@ -191,10 +191,10 @@ class TouchButton extends RectangleComponent with TapCallbacks {
       anchor: Anchor.topLeft,
     ));
 
-    // テキストを追加（親の中心に配置）
+    // テキストを追加（枠線の中央に配置）
     _textComponent = TextComponent(
       text: text,
-      position: Vector2.zero(), // 親の中心に配置
+      position: Vector2(size.x / 2, size.y / 2), // 枠線の中央に配置
       textRenderer: TextPaint(
         style: const TextStyle(
           color: Colors.white,
@@ -202,7 +202,7 @@ class TouchButton extends RectangleComponent with TapCallbacks {
           fontWeight: FontWeight.bold,
         ),
       ),
-      anchor: Anchor.topLeft,
+      anchor: Anchor.center,
     );
     add(_textComponent);
   }
