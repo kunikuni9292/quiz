@@ -17,6 +17,11 @@ class Player extends RectangleComponent
   bool isJumping = false;
   bool onGround = true;
 
+  // タッチ操作用の状態
+  bool touchLeftPressed = false;
+  bool touchRightPressed = false;
+  bool touchJumpPressed = false;
+
   Player({required Vector2 position})
       : super(
           position: position,
@@ -28,13 +33,18 @@ class Player extends RectangleComponent
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
     // 左右キーの状態を更新
-    isMovingLeft = keysPressed.contains(LogicalKeyboardKey.keyA) ||
+    bool keyboardLeft = keysPressed.contains(LogicalKeyboardKey.keyA) ||
         keysPressed.contains(LogicalKeyboardKey.arrowLeft);
-    isMovingRight = keysPressed.contains(LogicalKeyboardKey.keyD) ||
+    bool keyboardRight = keysPressed.contains(LogicalKeyboardKey.keyD) ||
         keysPressed.contains(LogicalKeyboardKey.arrowRight);
 
+    // キーボードとタッチの入力を統合
+    isMovingLeft = keyboardLeft || touchLeftPressed;
+    isMovingRight = keyboardRight || touchRightPressed;
+
     // ジャンプキーの状態を更新
-    bool jumpPressed = keysPressed.contains(LogicalKeyboardKey.space);
+    bool keyboardJump = keysPressed.contains(LogicalKeyboardKey.space);
+    bool jumpPressed = keyboardJump || touchJumpPressed;
 
     // ジャンプ処理（地面にいる時のみ）
     if (jumpPressed && onGround && !isJumping) {
@@ -44,6 +54,32 @@ class Player extends RectangleComponent
     }
 
     return true;
+  }
+
+  // タッチ操作用のメソッド
+  void setLeftPressed(bool pressed) {
+    touchLeftPressed = pressed;
+    _updateMovementState();
+  }
+
+  void setRightPressed(bool pressed) {
+    touchRightPressed = pressed;
+    _updateMovementState();
+  }
+
+  void setJumpPressed(bool pressed) {
+    touchJumpPressed = pressed;
+    if (pressed && onGround && !isJumping) {
+      velocity.y = -jumpSpeed;
+      onGround = false;
+      isJumping = true;
+    }
+  }
+
+  void _updateMovementState() {
+    // タッチ操作による移動状態を更新
+    isMovingLeft = touchLeftPressed;
+    isMovingRight = touchRightPressed;
   }
 
   @override
