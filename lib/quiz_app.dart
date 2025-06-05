@@ -13,6 +13,32 @@ enum QuizCategory {
   final IconData icon;
 }
 
+class Enemy {
+  final String name;
+  final String emoji;
+  final int maxHp;
+  int currentHp;
+  final QuizCategory category;
+
+  Enemy({
+    required this.name,
+    required this.emoji,
+    required this.maxHp,
+    required this.category,
+  }) : currentHp = maxHp;
+
+  double get hpPercentage => currentHp / maxHp;
+  bool get isDefeated => currentHp <= 0;
+
+  void takeDamage(int damage) {
+    currentHp = (currentHp - damage).clamp(0, maxHp);
+  }
+
+  void heal() {
+    currentHp = maxHp;
+  }
+}
+
 class QuizApp extends StatefulWidget {
   const QuizApp({super.key});
 
@@ -20,7 +46,7 @@ class QuizApp extends StatefulWidget {
   State<QuizApp> createState() => _QuizAppState();
 }
 
-class _QuizAppState extends State<QuizApp> {
+class _QuizAppState extends State<QuizApp> with TickerProviderStateMixin {
   QuizCategory? selectedCategory;
   int currentQuestionIndex = 0;
   int score = 0;
@@ -41,6 +67,42 @@ class _QuizAppState extends State<QuizApp> {
   Timer? inputTimer;
   List<String> userInput = [];
   bool inputTimeOut = false;
+
+  // バトル用の変数
+  Enemy? currentEnemy;
+  bool isAttacking = false;
+  int lastDamage = 0;
+  late AnimationController _attackController;
+  late AnimationController _shakeController;
+  late Animation<double> _attackAnimation;
+  late Animation<double> _shakeAnimation;
+
+  final Map<QuizCategory, Enemy> enemies = {
+    QuizCategory.general: Enemy(
+      name: '知識の番人',
+      emoji: '📚',
+      maxHp: 100,
+      category: QuizCategory.general,
+    ),
+    QuizCategory.science: Enemy(
+      name: '実験マシン',
+      emoji: '🧪',
+      maxHp: 120,
+      category: QuizCategory.science,
+    ),
+    QuizCategory.history: Enemy(
+      name: '時の武将',
+      emoji: '⚔️',
+      maxHp: 150,
+      category: QuizCategory.history,
+    ),
+    QuizCategory.okinawa: Enemy(
+      name: 'シーサー',
+      emoji: '🦁',
+      maxHp: 90,
+      category: QuizCategory.okinawa,
+    ),
+  };
 
   final Map<QuizCategory, List<Map<String, dynamic>>> questionsByCategory = {
     QuizCategory.general: [
@@ -583,6 +645,44 @@ class _QuizAppState extends State<QuizApp> {
     ],
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _attackController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _shakeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _attackAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _attackController,
+      curve: Curves.easeInOut,
+    ));
+
+    _shakeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 10.0,
+    ).animate(CurvedAnimation(
+      parent: _shakeController,
+      curve: Curves.elasticIn,
+    ));
+  }
+
+  @override
+  void dispose() {
+    questionTimer?.cancel();
+    inputTimer?.cancel();
+    _attackController.dispose();
+    _shakeController.dispose();
+    super.dispose();
+  }
+
   List<Map<String, dynamic>> get currentQuestions {
     return questionsByCategory[selectedCategory] ?? [];
   }
@@ -590,6 +690,12 @@ class _QuizAppState extends State<QuizApp> {
   void selectCategory(QuizCategory category) {
     setState(() {
       selectedCategory = category;
+      currentEnemy = Enemy(
+        name: enemies[category]!.name,
+        emoji: enemies[category]!.emoji,
+        maxHp: enemies[category]!.maxHp,
+        category: category,
+      );
       currentQuestionIndex = 0;
       score = 0;
       isAnswered = false;
@@ -601,6 +707,8 @@ class _QuizAppState extends State<QuizApp> {
       userInput.clear();
       currentCharIndex = 0;
       inputTimeOut = false;
+      isAttacking = false;
+      lastDamage = 0;
     });
   }
 
@@ -735,15 +843,42 @@ class _QuizAppState extends State<QuizApp> {
   void _completeInput() {
     inputTimer?.cancel();
 
+    int segmentBonus = (3 - currentSegmentIndex) * 2;
+    int inputBonus = 3;
+    int damage = segmentBonus + inputBonus;
+
     setState(() {
       isInputMode = false;
       isAnswered = true;
       isCorrect = true;
+      lastDamage = damage.clamp(1, 15);
+      score += lastDamage;
+    });
 
-      int segmentBonus = (3 - currentSegmentIndex) * 2;
-      int inputBonus = 3;
-      int totalPoints = segmentBonus + inputBonus;
-      score += totalPoints.clamp(1, 10);
+    _performAttack();
+  }
+
+  void _performAttack() {
+    if (currentEnemy == null) return;
+
+    setState(() {
+      isAttacking = true;
+    });
+
+    _attackController.forward();
+    _shakeController.forward();
+
+    Timer(const Duration(milliseconds: 400), () {
+      currentEnemy!.takeDamage(lastDamage);
+      setState(() {});
+    });
+
+    Timer(const Duration(milliseconds: 800), () {
+      setState(() {
+        isAttacking = false;
+      });
+      _attackController.reset();
+      _shakeController.reset();
     });
   }
 
@@ -769,8 +904,11 @@ class _QuizAppState extends State<QuizApp> {
   void resetQuiz() {
     questionTimer?.cancel();
     inputTimer?.cancel();
+    _attackController.reset();
+    _shakeController.reset();
     setState(() {
       selectedCategory = null;
+      currentEnemy = null;
       currentQuestionIndex = 0;
       score = 0;
       isAnswered = false;
@@ -782,6 +920,8 @@ class _QuizAppState extends State<QuizApp> {
       userInput.clear();
       currentCharIndex = 0;
       inputTimeOut = false;
+      isAttacking = false;
+      lastDamage = 0;
     });
   }
 
@@ -803,13 +943,6 @@ class _QuizAppState extends State<QuizApp> {
       }
     }
     return display;
-  }
-
-  @override
-  void dispose() {
-    questionTimer?.cancel();
-    inputTimer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -943,6 +1076,119 @@ class _QuizAppState extends State<QuizApp> {
               ),
               const SizedBox(height: 8),
 
+              // 敵のHP表示
+              if (currentEnemy != null) ...[
+                AnimatedBuilder(
+                  animation: _shakeAnimation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(
+                          _shakeAnimation.value * (isAttacking ? 1 : 0), 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: selectedCategory!.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: selectedCategory!.color.withOpacity(0.3)),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  currentEnemy!.emoji,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  currentEnemy!.name,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: selectedCategory!.color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: LinearProgressIndicator(
+                                    value: currentEnemy!.hpPercentage,
+                                    backgroundColor: Colors.red[200],
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      currentEnemy!.hpPercentage > 0.5
+                                          ? Colors.green
+                                          : currentEnemy!.hpPercentage > 0.2
+                                              ? Colors.orange
+                                              : Colors.red,
+                                    ),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${currentEnemy!.currentHp}/${currentEnemy!.maxHp}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (isAttacking && lastDamage > 0)
+                              AnimatedBuilder(
+                                animation: _attackAnimation,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: 1.0 - _attackAnimation.value,
+                                    child: Transform.translate(
+                                      offset: Offset(
+                                          0, -15 * _attackAnimation.value),
+                                      child: Text(
+                                        '💥 -$lastDamage',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            if (currentEnemy!.isDefeated)
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  '🎯 撃破！',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
+              ],
+
               // タイマー表示
               if (isQuestionStarted && canAnswer)
                 Container(
@@ -1016,7 +1262,7 @@ class _QuizAppState extends State<QuizApp> {
                 ),
               const SizedBox(height: 8),
 
-              // 問題文 - 画面の上位3分の1に調整
+              // 問題文 - 表示領域を縮小
               Expanded(
                 flex: 3,
                 child: Container(
@@ -1148,7 +1394,7 @@ class _QuizAppState extends State<QuizApp> {
               // 文字選択ボタン - Expandedで残りのスペースを活用
               if (isInputMode)
                 Expanded(
-                  flex: 3,
+                  flex: 8,
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -1170,8 +1416,8 @@ class _QuizAppState extends State<QuizApp> {
                         Expanded(
                           child: GridView.count(
                             crossAxisCount: 2,
-                            mainAxisSpacing: 6,
-                            crossAxisSpacing: 6,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 3.0,
                             children: (currentQuestion['charOptions']
                                     [currentCharIndex] as List<String>)
@@ -1268,8 +1514,9 @@ class _QuizAppState extends State<QuizApp> {
   }
 
   Widget _buildFinalResult() {
-    final maxPossibleScore = currentQuestions.length * 10;
+    final maxPossibleScore = currentQuestions.length * 15;
     final percentage = (score / maxPossibleScore * 100).round();
+    final isEnemyDefeated = currentEnemy?.isDefeated ?? false;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1281,21 +1528,47 @@ class _QuizAppState extends State<QuizApp> {
       child: Column(
         children: [
           Text(
-            '🏆 ${selectedCategory!.displayName}クイズ終了！',
-            style: const TextStyle(
+            isEnemyDefeated
+                ? '🎉 ${selectedCategory!.displayName}クリア！'
+                : '🏆 ${selectedCategory!.displayName}クイズ終了！',
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.orange,
+              color: isEnemyDefeated ? Colors.green : Colors.orange,
             ),
           ),
+          if (currentEnemy != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  currentEnemy!.emoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isEnemyDefeated
+                      ? '${currentEnemy!.name} 撃破！'
+                      : '${currentEnemy!.name} 残HP: ${currentEnemy!.currentHp}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        isEnemyDefeated ? Colors.red : selectedCategory!.color,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
-            '総得点: $score / $maxPossibleScore点 ($percentage%)',
+            '総ダメージ: $score点',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           Text(
-            _getGradeMessage(percentage),
+            _getBattleGradeMessage(score, isEnemyDefeated),
             style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 8),
@@ -1320,6 +1593,7 @@ class _QuizAppState extends State<QuizApp> {
                 child: ElevatedButton(
                   onPressed: () {
                     setState(() {
+                      currentEnemy?.heal();
                       currentQuestionIndex = 0;
                       score = 0;
                       isAnswered = false;
@@ -1331,6 +1605,8 @@ class _QuizAppState extends State<QuizApp> {
                       userInput.clear();
                       currentCharIndex = 0;
                       inputTimeOut = false;
+                      isAttacking = false;
+                      lastDamage = 0;
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -1339,7 +1615,7 @@ class _QuizAppState extends State<QuizApp> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   child: const Text(
-                    'もう一度',
+                    'もう一度挑戦',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -1349,6 +1625,13 @@ class _QuizAppState extends State<QuizApp> {
         ],
       ),
     );
+  }
+
+  String _getBattleGradeMessage(int totalDamage, bool isEnemyDefeated) {
+    if (isEnemyDefeated) return '🥇 完全勝利！敵を撃破しました！';
+    if (totalDamage >= 80) return '🥈 惜しい！もう少しで撃破でした！';
+    if (totalDamage >= 50) return '🥉 良い攻撃！敵にダメージを与えました！';
+    return '📚 修行が必要！もっと知識を身につけよう！';
   }
 
   String _getGradeMessage(int percentage) {
