@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import '../my_game.dart';
 
-class Player extends RectangleComponent
+class Player extends SpriteComponent
     with KeyboardHandler, HasGameReference<MyGame> {
   static const double moveSpeed = 200.0;
   static const double jumpSpeed = 300.0;
@@ -26,9 +26,16 @@ class Player extends RectangleComponent
       : super(
           position: position,
           size: Vector2(40, 40),
-          paint: Paint()..color = Colors.red,
           anchor: Anchor.center,
         );
+
+  @override
+  Future<void> onLoad() async {
+    super.onLoad();
+
+    // 漁師の画像を読み込み
+    sprite = await Sprite.load('illust766.png');
+  }
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
