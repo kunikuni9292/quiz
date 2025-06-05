@@ -127,28 +127,28 @@ class TouchController extends PositionComponent with HasGameReference<MyGame> {
   }
 
   void _setupLandscapeLayout() {
-    // 横持ちレイアウト：左右端に配置
+    // 横持ちレイアウト：画面下部に配置
     final screenWidth = game.size.x;
     final screenHeight = game.size.y;
-    final sideMargin = 30.0;
-    final centerY = screenHeight / 2;
+    final bottomMargin = 30.0;
+    final controllerY = screenHeight - buttonSize - bottomMargin;
 
     // 左移動ボタンを左下に配置
     leftButton.position = Vector2(
-      sideMargin + buttonSize / 2,
-      centerY + buttonSize / 2 + buttonSpacing / 2,
+      buttonSpacing + buttonSize / 2,
+      controllerY,
     );
 
-    // 右移動ボタンを左上に配置
+    // 右移動ボタンを左移動ボタンの隣に配置
     rightButton.position = Vector2(
-      sideMargin + buttonSize / 2,
-      centerY - buttonSize / 2 - buttonSpacing / 2,
+      buttonSpacing * 2 + buttonSize * 1.5,
+      controllerY,
     );
 
     // ジャンプボタンを右側に配置
     jumpButton.position = Vector2(
-      screenWidth - sideMargin - buttonSize / 2,
-      centerY,
+      screenWidth - buttonSpacing - buttonSize / 2,
+      controllerY,
     );
   }
 }

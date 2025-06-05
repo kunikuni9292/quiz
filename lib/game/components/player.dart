@@ -103,7 +103,10 @@ class Player extends RectangleComponent
     position += velocity * dt;
 
     // 地面との当たり判定
-    final groundY = game.size.y - 100; // 地面のY座標
+    final aspectRatio = game.size.x / game.size.y;
+    final groundY = aspectRatio > 1.0
+        ? game.size.y * 0.75 // 横画面：75%の位置
+        : game.size.y * 0.65; // 縦画面：65%の位置
     final playerBottom = position.y + size.y / 2;
 
     if (playerBottom >= groundY) {

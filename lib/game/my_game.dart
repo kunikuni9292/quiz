@@ -18,18 +18,22 @@ class MyGame extends FlameGame
       paint: Paint()..color = const Color(0xFF87CEEB), // 空色
     ));
 
-    // 地面を追加
+    // 地面を画面の向きに応じて配置（コントローラーとの被りを避ける）
+    final aspectRatio = size.x / size.y;
+    final groundY = aspectRatio > 1.0
+        ? size.y * 0.75 // 横画面：75%の位置（コントローラーが地面の上に来るように）
+        : size.y * 0.65; // 縦画面：65%の位置
+    final groundHeight = size.y - groundY; // 画面の底まで伸ばす
+
     add(RectangleComponent(
-      position: Vector2(0, size.y - 100),
-      size: Vector2(size.x, 100),
+      position: Vector2(0, groundY),
+      size: Vector2(size.x, groundHeight),
       paint: Paint()..color = const Color(0xFF8B4513), // 茶色
     ));
 
     // プレーヤーを地面の上に接するように配置
-    // 地面のY座標は size.y - 100
     // プレーヤーのサイズは40x40で、anchorがcenterなので
     // プレーヤーの下端が地面の上端に接するようにする
-    final groundY = size.y - 100;
     final playerY = groundY - 20; // プレーヤーの高さの半分(40/2=20)を引く
     player = Player(position: Vector2(size.x / 2, playerY));
     add(player);
